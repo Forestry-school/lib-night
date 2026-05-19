@@ -175,8 +175,8 @@
 </div>
 
 <script>
-    // ⚠️ 請在此處替換成您部署後取得的 Google Apps Script (GAS) API 網址
-    const API_URL = 'YOUR_GAS_API_URL_HERE';
+    // 已經替換為您的專屬 API 網址
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxxWN5IfwhRapNIMVjmNLTkiELGLFEHwydxEHrawYIhWwPLLeQ81kKMRI_0JrAKAIK3/exec';
     
     let allStudents = [];
 
@@ -232,7 +232,7 @@
         const classStudents = allStudents.filter(s => s.className === cls);
         
         classStudents.forEach(student => {
-            // ✨ 關鍵優化：強制造號為 2 位數格式 (例如: 1 變成 "01")
+            // 強制造號為 2 位數格式 (例如: 1 變成 "01")
             const seatStr = String(student.seat).padStart(2, '0');
             
             let card = document.createElement('div');
@@ -271,7 +271,7 @@
                     cardElement.className = 'card success';
                     cardElement.innerHTML = `✅ 已登記<br><b>${name}</b>`;
                     
-                    // 1.5 秒後恢復，因為要支援「重複存檔」（下個月或同天不同時段可再點）
+                    // 1.5 秒後恢復，以便支援重複點擊更新時間
                     setTimeout(() => {
                         cardElement.className = 'card student-card';
                         cardElement.innerHTML = originalHTML;
