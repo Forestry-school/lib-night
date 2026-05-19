@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧晚接接送系統 2.0</title>
+    <title>智慧晚接接送系統 2.0 (大字體版)</title>
     <style>
         :root {
             --primary: #005088;
@@ -31,7 +31,7 @@
         }
 
         .container {
-            max-width: 600px;
+            max-width: 800px; /* 稍微加寬容器以容納大字體 */
             margin: 0 auto;
             background: var(--card-bg);
             padding: 24px;
@@ -39,48 +39,48 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
         }
 
+        /* 標題放大 */
         h1 {
             text-align: center;
             color: var(--primary);
-            font-size: 24px;
-            margin-bottom: 20px;
+            font-size: 32px; /* 原 24px -> 放大為 32px */
+            margin-bottom: 24px;
             font-weight: 700;
         }
 
         #loading {
             text-align: center;
             color: var(--text-muted);
-            font-size: 16px;
+            font-size: 22px; /* 載入文字放大 */
             padding: 40px 0;
         }
 
         .grid-layout {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 12px;
-            margin-top: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); /* 卡片寬度加寬 */
+            gap: 16px; /* 卡片間距加大 */
+            margin-top: 20px;
         }
 
-        /* 按鈕卡片基礎樣式（適合手機/平板觸控） */
+        /* 按鈕卡片基礎樣式 */
         .card {
             border: 2px solid transparent;
             border-radius: 12px;
-            padding: 18px 8px;
+            padding: 24px 10px; /* 增加上下留白，讓按鈕變高 */
             text-align: center;
-            font-size: 16px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s ease;
-            -webkit-tap-highlight-color: transparent; /* 移除手機點擊藍色陰影 */
+            -webkit-tap-highlight-color: transparent;
             user-select: none;
         }
 
-        /* 班級卡片樣式 */
+        /* 🎯 班級卡片字體放大 */
         .class-card {
             background-color: var(--primary);
             color: white;
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 28px; /* 原 18px -> 放大為 28px */
+            font-weight: 700;
             box-shadow: 0 4px 6px rgba(0, 80, 136, 0.2);
         }
 
@@ -89,18 +89,19 @@
             background-color: var(--primary-hover);
         }
 
-        /* 學生卡片樣式 */
+        /* 🎯 學生卡片字體放大 */
         .student-card {
             background-color: #ffffff;
-            border: 1px solid #e2e8f0;
+            border: 2px solid #e2e8f0; /* 邊框稍微加粗 */
             color: var(--text-muted);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            font-size: 22px; /* 座號字體：原 16px -> 放大為 22px */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
         .student-card b {
-            font-size: 18px;
+            font-size: 28px; /* 姓名字體：原 18px -> 放大為 28px */
             display: block;
-            margin-top: 4px;
+            margin-top: 8px;
             color: var(--text-main);
         }
 
@@ -109,18 +110,18 @@
             background-color: #f8fafc;
         }
 
-        /* 返回按鈕 */
+        /* 🎯 返回按鈕放大 */
         #backBtn {
             width: 100%;
             background-color: #64748b;
             color: white;
             border: none;
-            padding: 14px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
+            padding: 20px; /* 按鈕變高 */
+            border-radius: 12px;
+            font-size: 22px; /* 字體：原 16px -> 放大為 22px */
+            font-weight: 700;
             cursor: pointer;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
             transition: background 0.2s;
             -webkit-tap-highlight-color: transparent;
         }
@@ -129,11 +130,12 @@
             background-color: #475569;
         }
 
+        /* 提示文字放大 */
         .section-title {
-            font-size: 18px;
+            font-size: 24px; /* 原 18px -> 放大為 24px */
             color: var(--text-muted);
-            margin-bottom: 12px;
-            font-weight: 600;
+            margin-bottom: 16px;
+            font-weight: 700;
             text-align: center;
         }
 
@@ -143,6 +145,7 @@
             color: var(--text-muted) !important;
             border-color: transparent !important;
             cursor: not-allowed;
+            font-size: 22px !important;
         }
 
         .success {
@@ -163,7 +166,7 @@
 <body>
 
 <div class="container">
-    <h1>🏫 智慧晚接登記系統 2.0</h1>
+    <h1>🏫 晚接登記系統</h1>
     
     <div id="loading">連線資料庫中，請稍候...</div>
     
@@ -175,7 +178,7 @@
 </div>
 
 <script>
-    // 已經替換為您的專屬 API 網址
+    // 您的專屬 API 網址
     const API_URL = 'https://script.google.com/macros/s/AKfycbxxWN5IfwhRapNIMVjmNLTkiELGLFEHwydxEHrawYIhWwPLLeQ81kKMRI_0JrAKAIK3/exec';
     
     let allStudents = [];
@@ -191,7 +194,7 @@
                 renderClasses();
             })
             .catch(error => {
-                document.getElementById('loading').innerText = "❌ 載入失敗，請確認網路或 API 網址是否正確。";
+                document.getElementById('loading').innerText = "❌ 載入失敗，請確認網路連線。";
                 console.error(error);
             });
     }
@@ -232,11 +235,12 @@
         const classStudents = allStudents.filter(s => s.className === cls);
         
         classStudents.forEach(student => {
-            // 強制造號為 2 位數格式 (例如: 1 變成 "01")
+            // 強制造號為 2 位數格式
             const seatStr = String(student.seat).padStart(2, '0');
             
             let card = document.createElement('div');
             card.className = 'card student-card';
+            // 字體已在 CSS 中放大，這裡維持 HTML 結構
             card.innerHTML = `${seatStr}號<br><b>${student.name}</b>`;
             
             // 綁定點擊事件
@@ -252,26 +256,22 @@
 
     // 4. 點擊學生卡片發送晚接紀錄
     function logPickup(className, seatStr, name, cardElement) {
-        // 防止連續快點導致重複發送
         if (cardElement.classList.contains('logging')) return;
 
-        // 轉為讀取中狀態
         cardElement.classList.add('logging');
         const originalHTML = cardElement.innerHTML;
         cardElement.innerHTML = `記錄中...`;
 
-        // 建立發送網址
         const url = `${API_URL}?action=addLog&className=${encodeURIComponent(className)}&seat=${encodeURIComponent(seatStr)}&name=${encodeURIComponent(name)}`;
         
         fetch(url)
             .then(response => response.json())
             .then(data => {
                 if(data.status === 'success') {
-                    // 登記成功：變綠色並顯示打勾
                     cardElement.className = 'card success';
                     cardElement.innerHTML = `✅ 已登記<br><b>${name}</b>`;
                     
-                    // 1.5 秒後恢復，以便支援重複點擊更新時間
+                    // 1.5 秒後恢復
                     setTimeout(() => {
                         cardElement.className = 'card student-card';
                         cardElement.innerHTML = originalHTML;
@@ -279,7 +279,6 @@
                 }
             })
             .catch(error => {
-                // 登記失敗：變紅色提示
                 cardElement.className = 'card error';
                 cardElement.innerHTML = `❌ 失敗<br><b>重試</b>`;
                 console.error(error);
