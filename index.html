@@ -3,119 +3,291 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧晚接接送系統</title>
+    <title>智慧晚接接送系統 2.0</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f4f7f6; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; text-align: center; }
-        select { width: 100%; padding: 12px; font-size: 18px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 20px; }
-        .student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; }
-        .student-btn { background-color: #3498db; color: white; border: none; padding: 15px; font-size: 16px; border-radius: 8px; cursor: pointer; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .student-btn:hover { background-color: #2980b9; transform: translateY(-2px); }
-        .student-btn:active { transform: translateY(0); }
-        #loading { text-align: center; color: #7f8c8d; font-size: 18px; display: none; }
+        :root {
+            --primary: #005088;
+            --primary-hover: #003d66;
+            --bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            padding: 16px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        #loading {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 16px;
+            padding: 40px 0;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        /* 按鈕卡片基礎樣式（適合手機/平板觸控） */
+        .card {
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 18px 8px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent; /* 移除手機點擊藍色陰影 */
+            user-select: none;
+        }
+
+        /* 班級卡片樣式 */
+        .class-card {
+            background-color: var(--primary);
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 80, 136, 0.2);
+        }
+
+        .class-card:active {
+            transform: scale(0.95);
+            background-color: var(--primary-hover);
+        }
+
+        /* 學生卡片樣式 */
+        .student-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            color: var(--text-muted);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .student-card b {
+            font-size: 18px;
+            display: block;
+            margin-top: 4px;
+            color: var(--text-main);
+        }
+
+        .student-card:active {
+            transform: scale(0.95);
+            background-color: #f8fafc;
+        }
+
+        /* 返回按鈕 */
+        #backBtn {
+            width: 100%;
+            background-color: #64748b;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 16px;
+            transition: background 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #backBtn:active {
+            background-color: #475569;
+        }
+
+        .section-title {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* 狀態樣式 */
+        .logging {
+            background-color: #e2e8f0 !important;
+            color: var(--text-muted) !important;
+            border-color: transparent !important;
+            cursor: not-allowed;
+        }
+
+        .success {
+            background-color: var(--success) !important;
+            color: white !important;
+            border-color: transparent !important;
+        }
+        .success b { color: white !important; }
+
+        .error {
+            background-color: var(--error) !important;
+            color: white !important;
+            border-color: transparent !important;
+        }
+        .error b { color: white !important; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🏫 晚接接送登記表</h1>
+    <h1>🏫 智慧晚接登記系統 2.0</h1>
     
-    <div id="loading">載入學生名單中，請稍候...</div>
+    <div id="loading">連線資料庫中，請稍候...</div>
     
-    <select id="classSelect" onchange="renderStudents()" style="display:none;">
-        <option value="">-- 請選擇班級 --</option>
-    </select>
+    <button id="backBtn" onclick="resetView()" style="display:none;">⬅️ 返回選擇班級</button>
+    
+    <div id="viewTitle" class="section-title" style="display:none;">請選擇班級</div>
 
-    <div id="studentContainer" class="student-grid"></div>
+    <div id="cardGrid" class="grid-layout"></div>
 </div>
 
 <script>
-    // ⚠️ 替換成你剛剛部署取得的 GAS API 網址
-    const API_URL = 'https://script.google.com/macros/s/AKfycbxxWN5IfwhRapNIMVjmNLTkiELGLFEHwydxEHrawYIhWwPLLeQ81kKMRI_0JrAKAIK3/exec';
+    // ⚠️ 請在此處替換成您部署後取得的 Google Apps Script (GAS) API 網址
+    const API_URL = 'YOUR_GAS_API_URL_HERE';
     
     let allStudents = [];
 
     // 網頁載入時立刻獲取學生資料
     window.onload = function() {
-        document.getElementById('loading').style.display = 'block';
-        
         fetch(`${API_URL}?action=getStudents`)
             .then(response => response.json())
             .then(data => {
                 allStudents = data;
-                populateClassSelect();
                 document.getElementById('loading').style.display = 'none';
-                document.getElementById('classSelect').style.display = 'block';
+                document.getElementById('viewTitle').style.display = 'block';
+                renderClasses();
             })
             .catch(error => {
-                alert("載入失敗，請檢查網路或 API 網址。");
+                document.getElementById('loading').innerText = "❌ 載入失敗，請確認網路或 API 網址是否正確。";
                 console.error(error);
             });
     }
 
-    // 將資料庫中的班級取出，並放入下拉式選單 (去除重複)
-    function populateClassSelect() {
-        const select = document.getElementById('classSelect');
+    // 1. 渲染「班級卡片」首頁
+    function renderClasses() {
+        const grid = document.getElementById('cardGrid');
+        const viewTitle = document.getElementById('viewTitle');
+        const backBtn = document.getElementById('backBtn');
+        
+        grid.innerHTML = ''; 
+        viewTitle.innerText = '🎯 請選擇班級';
+        backBtn.style.display = 'none';
+
+        // 從資料中提取所有班級並去重、排序
         const classes = [...new Set(allStudents.map(s => s.className))].sort();
         
         classes.forEach(cls => {
-            let option = document.createElement('option');
-            option.value = cls;
-            option.text = cls + ' 班';
-            select.appendChild(option);
+            let card = document.createElement('div');
+            card.className = 'card class-card';
+            card.innerText = cls;
+            card.onclick = () => renderStudents(cls);
+            grid.appendChild(card);
         });
     }
 
-    // 根據選擇的班級，顯示該班學生按鈕
-    function renderStudents() {
-        const selectedClass = document.getElementById('classSelect').value;
-        const container = document.getElementById('studentContainer');
-        container.innerHTML = ''; // 清空畫面
+    // 2. 渲染「學生卡片」點擊頁面
+    function renderStudents(cls) {
+        const grid = document.getElementById('cardGrid');
+        const viewTitle = document.getElementById('viewTitle');
+        const backBtn = document.getElementById('backBtn');
         
-        if (!selectedClass) return;
+        grid.innerHTML = '';
+        viewTitle.innerText = `👥 【${cls}】學生名單`;
+        backBtn.style.display = 'block';
 
-        const classStudents = allStudents.filter(s => s.className === selectedClass);
+        // 篩選出該班級的學生
+        const classStudents = allStudents.filter(s => s.className === cls);
         
         classStudents.forEach(student => {
-            let btn = document.createElement('button');
-            btn.className = 'student-btn';
-            btn.innerHTML = `${student.seat}號<br><b>${student.name}</b>`;
-            btn.onclick = () => logPickup(student.className, student.seat, student.name, btn);
-            container.appendChild(btn);
+            // ✨ 關鍵優化：強制造號為 2 位數格式 (例如: 1 變成 "01")
+            const seatStr = String(student.seat).padStart(2, '0');
+            
+            let card = document.createElement('div');
+            card.className = 'card student-card';
+            card.innerHTML = `${seatStr}號<br><b>${student.name}</b>`;
+            
+            // 綁定點擊事件
+            card.onclick = () => logPickup(student.className, seatStr, student.name, card);
+            grid.appendChild(card);
         });
     }
 
-    // 點擊按鈕後，發送資料到 GAS 寫入紀錄
-    function logPickup(className, seat, name, btnElement) {
-        // 改變按鈕狀態，避免重複連點
-        btnElement.disabled = true;
-        btnElement.style.backgroundColor = '#95a5a6';
-        btnElement.innerHTML = '紀錄中...';
+    // 3. 返回首頁
+    function resetView() {
+        renderClasses();
+    }
 
-        const url = `${API_URL}?action=addLog&className=${encodeURIComponent(className)}&seat=${encodeURIComponent(seat)}&name=${encodeURIComponent(name)}`;
+    // 4. 點擊學生卡片發送晚接紀錄
+    function logPickup(className, seatStr, name, cardElement) {
+        // 防止連續快點導致重複發送
+        if (cardElement.classList.contains('logging')) return;
+
+        // 轉為讀取中狀態
+        cardElement.classList.add('logging');
+        const originalHTML = cardElement.innerHTML;
+        cardElement.innerHTML = `記錄中...`;
+
+        // 建立發送網址
+        const url = `${API_URL}?action=addLog&className=${encodeURIComponent(className)}&seat=${encodeURIComponent(seatStr)}&name=${encodeURIComponent(name)}`;
         
         fetch(url)
             .then(response => response.json())
             .then(data => {
                 if(data.status === 'success') {
-                    // 成功後按鈕變為綠色提示
-                    btnElement.style.backgroundColor = '#2ecc71';
-                    btnElement.innerHTML = `✅ 已登記<br>${name}`;
+                    // 登記成功：變綠色並顯示打勾
+                    cardElement.className = 'card success';
+                    cardElement.innerHTML = `✅ 已登記<br><b>${name}</b>`;
                     
-                    // 2秒後恢復原狀，以便如果有同一人需重複紀錄可再次點擊
+                    // 1.5 秒後恢復，因為要支援「重複存檔」（下個月或同天不同時段可再點）
                     setTimeout(() => {
-                        btnElement.disabled = false;
-                        btnElement.style.backgroundColor = '#3498db';
-                        btnElement.innerHTML = `${seat}號<br><b>${name}</b>`;
-                    }, 2000);
+                        cardElement.className = 'card student-card';
+                        cardElement.innerHTML = originalHTML;
+                    }, 1500);
                 }
             })
             .catch(error => {
-                alert(`登記 ${name} 失敗，請重試！`);
-                btnElement.disabled = false;
-                btnElement.style.backgroundColor = '#e74c3c'; // 紅色警告
-                btnElement.innerHTML = `❌ 重試<br>${name}`;
+                // 登記失敗：變紅色提示
+                cardElement.className = 'card error';
+                cardElement.innerHTML = `❌ 失敗<br><b>重試</b>`;
+                console.error(error);
+                
+                setTimeout(() => {
+                    cardElement.className = 'card student-card';
+                    cardElement.innerHTML = originalHTML;
+                }, 2000);
             });
     }
 </script>
