@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>國小部晚接接送系統 3.0 </title>
+    <title>智慧晚接接送系統 2.0 (極速版)</title>
     <style>
         :root {
             --primary: #557A46;        
@@ -16,7 +16,6 @@
             --error: #D97E7A;          
             --student-btn-bg: #FFFDF7; 
             
-            /* 刪除模式的專屬顏色 */
             --delete-mode-color: #D97E7A; 
             --delete-bg: #FFF5F5;
         }
@@ -33,7 +32,6 @@
             transition: background-image 0.3s ease;
         }
 
-        /* 當開啟刪除模式時，背景稍微變紅提示 */
         body.delete-active {
             background-image: linear-gradient(135deg, #FFF0F0 0%, #FCE2E2 100%);
         }
@@ -47,17 +45,12 @@
             box-shadow: 0 10px 25px rgba(85, 122, 70, 0.08); 
             border: 2px solid #E8EEDF;
             position: relative;
-            padding-bottom: 60px; /* 預留空間給署名 */
+            padding-bottom: 60px; 
         }
 
         h1 {
-            text-align: center;
-            color: var(--primary);
-            font-size: 32px;
-            margin-bottom: 24px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            transition: color 0.3s ease;
+            text-align: center; color: var(--primary); font-size: 32px;
+            margin-bottom: 24px; font-weight: 700; letter-spacing: 1px; transition: color 0.3s ease;
         }
 
         body.delete-active h1 { color: var(--delete-mode-color); }
@@ -71,6 +64,7 @@
             text-align: center; font-weight: 500; cursor: pointer;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             -webkit-tap-highlight-color: transparent; user-select: none;
+            position: relative;
         }
 
         .class-card { background-color: var(--primary); color: white; font-size: 28px; font-weight: 700; box-shadow: 0 4px 12px rgba(85, 122, 70, 0.2); }
@@ -80,11 +74,14 @@
         .student-card b { font-size: 28px; display: block; margin-top: 8px; color: var(--text-main); }
         .student-card:active { transform: scale(0.92); background-color: #F4F1E1; border-color: #D3CDB3; }
 
-        /* 刪除模式下的學生卡片外觀 */
+        .student-card.is-registered { background-color: #EAF2E3; border-color: var(--primary); }
+        .status-icon { position: absolute; top: 8px; right: 8px; font-size: 18px; display: none; }
+        .student-card.is-registered .status-icon { display: block; }
+
         body.delete-active .student-card { border-color: #F8D7D7; }
         body.delete-active .student-card:active { background-color: #FCE8E8; border-color: #D97E7A; }
+        body.delete-active .student-card.is-registered { background-color: #FFF0F0; border-color: var(--delete-mode-color); }
 
-        /* 頂部按鈕列 */
         .action-bar { display: flex; gap: 12px; margin-bottom: 20px; }
         
         .btn-common {
@@ -101,13 +98,14 @@
 
         .section-title { font-size: 24px; color: var(--text-muted); margin-bottom: 16px; font-weight: 700; text-align: center; }
 
-        .logging { background-color: #E2EBD5 !important; color: var(--primary) !important; border-color: transparent !important; cursor: not-allowed; font-size: 22px !important; }
+        /* 移除原本灰色的 logging 樣式，改用 processing 防連點 */
+        .processing { pointer-events: none; } 
+        
         .success { background-color: var(--success) !important; color: white !important; border-color: transparent !important; box-shadow: 0 4px 12px rgba(115, 158, 130, 0.3) !important; }
         .success b { color: white !important; }
         .error { background-color: var(--error) !important; color: white !important; border-color: transparent !important; }
         .error b { color: white !important; }
 
-        /* 製作人署名 */
         .footer-credit {
             position: absolute; bottom: 20px; left: 0; width: 100%;
             text-align: center; font-size: 16px; font-weight: 700; color: #A1AFA0; letter-spacing: 2px;
@@ -117,9 +115,9 @@
 <body>
 
 <div class="container">
-    <h1 id="mainTitle">🌱 國小部晚接登記系統</h1>
+    <h1 id="mainTitle">🌱 晚接登記系統</h1>
     
-    <div id="loading">讀取名單中，請稍候...</div>
+    <div id="loading">讀取名單與今日狀態中...</div>
     
     <div class="action-bar" id="actionBar" style="display:none;">
         <button id="backBtn" class="btn-common" onclick="resetView()">🍃 返回班級</button>
@@ -137,7 +135,7 @@
     const API_URL = 'https://script.google.com/macros/s/AKfycbxxWN5IfwhRapNIMVjmNLTkiELGLFEHwydxEHrawYIhWwPLLeQ81kKMRI_0JrAKAIK3/exec';
     
     let allStudents = [];
-    let isDeleteMode = false; // 追蹤目前是否為刪除模式
+    let isDeleteMode = false; 
 
     window.onload = function() {
         fetch(`${API_URL}?action=getStudents`)
@@ -158,7 +156,6 @@
         const viewTitle = document.getElementById('viewTitle');
         const actionBar = document.getElementById('actionBar');
         
-        // 回到班級首頁時，強制關閉刪除模式
         isDeleteMode = false;
         updateDeleteUI();
         
@@ -184,16 +181,21 @@
         
         grid.innerHTML = '';
         viewTitle.innerText = `👥 【${cls}】學生名單`;
-        actionBar.style.display = 'flex'; // 顯示上方按鈕列
+        actionBar.style.display = 'flex';
 
         const classStudents = allStudents.filter(s => s.className === cls);
         
         classStudents.forEach(student => {
-            const seatStr = String(student.seat).padStart(2, '0');
+            const seatStr = student.seat;
             
             let card = document.createElement('div');
             card.className = 'card student-card';
-            card.innerHTML = `${seatStr}號<br><b>${student.name}</b>`;
+            
+            if (student.isRegistered) {
+                card.classList.add('is-registered');
+            }
+            
+            card.innerHTML = `<span class="status-icon">✅</span>${seatStr}號<br><b>${student.name}</b>`;
             
             card.onclick = () => handleStudentClick(student.className, seatStr, student.name, card);
             grid.appendChild(card);
@@ -204,13 +206,11 @@
         renderClasses();
     }
 
-    // 切換刪除模式
     function toggleDeleteMode() {
         isDeleteMode = !isDeleteMode;
         updateDeleteUI();
     }
 
-    // 更新刪除模式的視覺畫面
     function updateDeleteUI() {
         const btn = document.getElementById('toggleDeleteBtn');
         const title = document.getElementById('mainTitle');
@@ -221,72 +221,83 @@
             btn.classList.add('active');
             btn.innerText = '❌ 退出取消模式';
             title.innerText = '⚠️ 取消登記模式';
-            viewTitle.innerText = '請點選要「刪除」今日紀錄的學生';
+            viewTitle.innerText = '請點選要「刪除」的已登記學生';
         } else {
             document.body.classList.remove('delete-active');
             btn.classList.remove('active');
             btn.innerText = '🗑️ 取消誤按';
             title.innerText = '🌱 晚接登記系統';
-            const currentClass = allStudents.find(s => s.className === document.querySelector('.student-card')?.innerText.split('號')[0] ); // 簡單防呆
-            viewTitle.innerText = '👥 點擊學生進行登記';
+            const sampleCard = document.querySelector('.student-card');
+            if(sampleCard) {
+                viewTitle.innerText = '👥 點擊學生進行登記';
+            }
         }
     }
 
-    // 處理學生卡片點擊 (判斷是新增還是刪除)
     function handleStudentClick(className, seatStr, name, cardElement) {
-        if (cardElement.classList.contains('logging')) return;
+        // 防止重複連點
+        if (cardElement.classList.contains('processing')) return;
+        
+        const studentObj = allStudents.find(s => s.className === className && s.seat === seatStr);
 
         if (isDeleteMode) {
-            // 執行刪除邏輯
+            if (!studentObj.isRegistered) {
+                alert(`今天沒有 ${name} 的晚接紀錄，無法刪除喔！`);
+                return;
+            }
             if (confirm(`確定要刪除 ${name} 今天的晚接紀錄嗎？`)) {
-                executeLogAction(className, seatStr, name, cardElement, 'removeLog');
+                executeLogAction(className, seatStr, name, cardElement, 'removeLog', studentObj);
             }
         } else {
-            // 執行正常登記邏輯
-            executeLogAction(className, seatStr, name, cardElement, 'addLog');
+            executeLogAction(className, seatStr, name, cardElement, 'addLog', studentObj);
         }
     }
 
-    // 發送 API 請求的共用函數
-    function executeLogAction(className, seatStr, name, cardElement, actionType) {
-        cardElement.classList.add('logging');
-        const originalHTML = cardElement.innerHTML;
-        cardElement.innerHTML = actionType === 'addLog' ? `記錄中...` : `刪除中...`;
+    // ⚡ 關鍵優化：極速反應的登記邏輯
+    function executeLogAction(className, seatStr, name, cardElement, actionType, studentObj) {
+        // 鎖定卡片避免連點
+        cardElement.classList.add('processing');
+        
+        const isAdding = (actionType === 'addLog');
+        const originalHTML = `<span class="status-icon">✅</span>${seatStr}號<br><b>${name}</b>`;
 
+        // 🎯 第一步：不等伺服器，畫面「瞬間」變更狀態，給予立即的回饋！
+        if (isAdding) {
+            cardElement.className = 'card success processing';
+            cardElement.innerHTML = `✅ 已登記<br><b>${name}</b>`;
+        } else {
+            cardElement.className = 'card error processing';
+            cardElement.style.backgroundColor = '#D97E7A'; 
+            cardElement.innerHTML = `🗑️ 已刪除<br><b>${name}</b>`;
+        }
+
+        // 🎯 第二步：背景默默發送 API 給 Google
         const url = `${API_URL}?action=${actionType}&className=${encodeURIComponent(className)}&seat=${encodeURIComponent(seatStr)}&name=${encodeURIComponent(name)}`;
         
         fetch(url)
             .then(response => response.json())
             .then(data => {
                 if(data.status === 'success') {
-                    if (actionType === 'addLog') {
-                        cardElement.className = 'card success';
-                        cardElement.innerHTML = `✅ 已登記<br><b>${name}</b>`;
-                    } else {
-                        cardElement.className = 'card error';
-                        cardElement.style.backgroundColor = '#D97E7A'; // 紅底白字提示已刪除
-                        cardElement.innerHTML = `🗑️ 已刪除<br><b>${name}</b>`;
-                    }
+                    // 背景更新成功，記錄最新的狀態
+                    studentObj.isRegistered = isAdding;
                 } else if (data.status === 'not_found') {
-                    // 如果點了刪除，但今天根本沒他的紀錄
-                    cardElement.className = 'card student-card';
-                    alert(`今天沒有 ${name} 的晚接紀錄喔！`);
-                    cardElement.innerHTML = originalHTML;
-                    return; // 提早跳出，不執行下面的恢復還原
+                    studentObj.isRegistered = false; 
                 }
                 
-                // 1.5 秒後恢復原狀
+                // 1.2 秒後，將卡片恢復成正常的「已登記(淺綠)」或「未登記(淺黃)」狀態
                 setTimeout(() => {
-                    cardElement.className = 'card student-card';
+                    cardElement.className = studentObj.isRegistered ? 'card student-card is-registered' : 'card student-card';
                     cardElement.innerHTML = originalHTML;
-                    cardElement.style.backgroundColor = ''; // 清除硬塞的顏色
-                }, 1500);
+                    cardElement.style.backgroundColor = ''; 
+                }, 1200);
             })
             .catch(error => {
+                // 萬一真的沒網路或失敗了，才跳出紅框警告
                 cardElement.className = 'card error';
-                cardElement.innerHTML = `❌ 失敗<br><b>重試</b>`;
+                cardElement.innerHTML = `❌ 網路失敗<br><b>請重試</b>`;
                 setTimeout(() => {
-                    cardElement.className = 'card student-card';
+                    // 回復成原本點擊前的狀態
+                    cardElement.className = studentObj.isRegistered ? 'card student-card is-registered' : 'card student-card';
                     cardElement.innerHTML = originalHTML;
                 }, 2000);
             });
