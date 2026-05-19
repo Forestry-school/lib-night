@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧晚接接送系統</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f4f7f6; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; }
+        select { width: 100%; padding: 12px; font-size: 18px; border-radius: 8px; border: 1px solid #ccc; margin-bottom: 20px; }
+        .student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; }
+        .student-btn { background-color: #3498db; color: white; border: none; padding: 15px; font-size: 16px; border-radius: 8px; cursor: pointer; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .student-btn:hover { background-color: #2980b9; transform: translateY(-2px); }
+        .student-btn:active { transform: translateY(0); }
+        #loading { text-align: center; color: #7f8c8d; font-size: 18px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🏫 晚接接送登記表</h1>
+    
+    <div id="loading">載入學生名單中，請稍候...</div>
+    
+    <select id="classSelect" onchange="renderStudents()" style="display:none;">
+        <option value="">-- 請選擇班級 --</option>
+    </select>
+
+    <div id="studentContainer" class="student-grid"></div>
+</div>
+
+<script>
+    // ⚠️ 替換成你剛剛部署取得的 GAS API 網址
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxxWN5IfwhRapNIMVjmNLTkiELGLFEHwydxEHrawYIhWwPLLeQ81kKMRI_0JrAKAIK3/exec';
+    
+    let allStudents = [];
+
+    // 網頁載入時立刻獲取學生資料
+    window.onload = function() {
+        document.getElementById('loading').style.display = 'block';
+        
+        fetch(`${API_URL}?action=getStudents`)
+            .then(response => response.json())
+            .then(data => {
+                allStudents = data;
+                populateClassSelect();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('classSelect').style.display = 'block';
+            })
+            .catch(error => {
+                alert("載入失敗，請檢查網路或 API 網址。");
+                console.error(error);
+            });
+    }
+
+    // 將資料庫中的班級取出，並放入下拉式選單 (去除重複)
+    function populateClassSelect() {
+        const select = document.getElementById('classSelect');
+        const classes = [...new Set(allStudents.map(s => s.className))].sort();
+        
+        classes.forEach(cls => {
+            let option = document.createElement('option');
+            option.value = cls;
+            option.text = cls + ' 班';
+            select.appendChild(option);
+        });
+    }
+
+    // 根據選擇的班級，顯示該班學生按鈕
+    function renderStudents() {
+        const selectedClass = document.getElementById('classSelect').value;
+        const container = document.getElementById('studentContainer');
+        container.innerHTML = ''; // 清空畫面
+        
+        if (!selectedClass) return;
+
+        const classStudents = allStudents.filter(s => s.className === selectedClass);
+        
+        classStudents.forEach(student => {
+            let btn = document.createElement('button');
+            btn.className = 'student-btn';
+            btn.innerHTML = `${student.seat}號<br><b>${student.name}</b>`;
+            btn.onclick = () => logPickup(student.className, student.seat, student.name, btn);
+            container.appendChild(btn);
+        });
+    }
+
+    // 點擊按鈕後，發送資料到 GAS 寫入紀錄
+    function logPickup(className, seat, name, btnElement) {
+        // 改變按鈕狀態，避免重複連點
+        btnElement.disabled = true;
+        btnElement.style.backgroundColor = '#95a5a6';
+        btnElement.innerHTML = '紀錄中...';
+
+        const url = `${API_URL}?action=addLog&className=${encodeURIComponent(className)}&seat=${encodeURIComponent(seat)}&name=${encodeURIComponent(name)}`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    // 成功後按鈕變為綠色提示
+                    btnElement.style.backgroundColor = '#2ecc71';
+                    btnElement.innerHTML = `✅ 已登記<br>${name}`;
+                    
+                    // 2秒後恢復原狀，以便如果有同一人需重複紀錄可再次點擊
+                    setTimeout(() => {
+                        btnElement.disabled = false;
+                        btnElement.style.backgroundColor = '#3498db';
+                        btnElement.innerHTML = `${seat}號<br><b>${name}</b>`;
+                    }, 2000);
+                }
+            })
+            .catch(error => {
+                alert(`登記 ${name} 失敗，請重試！`);
+                btnElement.disabled = false;
+                btnElement.style.backgroundColor = '#e74c3c'; // 紅色警告
+                btnElement.innerHTML = `❌ 重試<br>${name}`;
+            });
+    }
+</script>
+
+</body>
+</html>
