@@ -1,168 +1,308 @@
-function doGet(e) {
-  const action = e.parameter.action;
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  
-  // 1. 取得學生名單，並同步比對「今日已登記」狀態
-  if (action === 'getStudents') {
-    const sheet = ss.getSheetByName("學生名單");
-    const data = sheet.getDataRange().getDisplayValues();
-    
-    // 讀取今日已登記名單
-    const logSheet = ss.getSheetByName("晚接紀錄");
-    const logData = logSheet.getDataRange().getDisplayValues();
-    const now = new Date();
-    const dateStr = Utilities.formatDate(now, "Asia/Taipei", "yyyy/MM/dd");
-    
-    // 建立一個集合，記錄今天已經登記的「班級-座號」
-    let todaySet = new Set();
-    for(let i = 1; i < logData.length; i++) {
-       if(logData[i][0] === dateStr) {
-           let c = String(logData[i][2]).trim();
-           let s = String(logData[i][3]).trim().replace(/'/g, '').padStart(2, '0');
-           todaySet.add(c + '-' + s);
-       }
-    }
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧晚接接送系統 2.0 (極速版)</title>
+    <style>
+        :root {
+            --primary: #557A46;        
+            --primary-hover: #3B5A2F;  
+            --bg: #F0F4E9;             
+            --card-bg: #FFFFFF;        
+            --text-main: #4A4A4A;      
+            --text-muted: #8D998B;     
+            --success: #739E82;        
+            --error: #D97E7A;          
+            --student-btn-bg: #FFFDF7; 
+            
+            --delete-mode-color: #D97E7A; 
+            --delete-bg: #FFF5F5;
+        }
 
-    let students = [];
-    for (let i = 1; i < data.length; i++) {
-      if(data[i][0] !== "") {
-        let c = String(data[i][0]).trim();
-        let s = String(data[i][1]).trim().padStart(2, '0');
-        let n = String(data[i][2]).trim();
-        // 判斷該生今天是否已經在紀錄中
-        let isReg = todaySet.has(c + '-' + s); 
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            padding: 16px;
+            min-height: 100vh;
+            background-image: linear-gradient(135deg, #F0F4E9 0%, #E2EBD5 100%);
+            transition: background-image 0.3s ease;
+        }
+
+        body.delete-active {
+            background-image: linear-gradient(135deg, #FFF0F0 0%, #FCE2E2 100%);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 30px 24px;
+            border-radius: 24px; 
+            box-shadow: 0 10px 25px rgba(85, 122, 70, 0.08); 
+            border: 2px solid #E8EEDF;
+            position: relative;
+            padding-bottom: 60px; 
+        }
+
+        h1 {
+            text-align: center; color: var(--primary); font-size: 32px;
+            margin-bottom: 24px; font-weight: 700; letter-spacing: 1px; transition: color 0.3s ease;
+        }
+
+        body.delete-active h1 { color: var(--delete-mode-color); }
+
+        #loading { text-align: center; color: var(--text-muted); font-size: 22px; padding: 40px 0; }
+
+        .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 16px; margin-top: 20px; }
+
+        .card {
+            border: 2px solid transparent; border-radius: 16px; padding: 24px 10px;
+            text-align: center; font-weight: 500; cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            -webkit-tap-highlight-color: transparent; user-select: none;
+            position: relative;
+        }
+
+        .class-card { background-color: var(--primary); color: white; font-size: 28px; font-weight: 700; box-shadow: 0 4px 12px rgba(85, 122, 70, 0.2); }
+        .class-card:active { transform: scale(0.92); background-color: var(--primary-hover); }
+
+        .student-card { background-color: var(--student-btn-bg); border: 2px solid #EAE6D8; color: var(--text-muted); font-size: 22px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
+        .student-card b { font-size: 28px; display: block; margin-top: 8px; color: var(--text-main); }
+        .student-card:active { transform: scale(0.92); background-color: #F4F1E1; border-color: #D3CDB3; }
+
+        .student-card.is-registered { background-color: #EAF2E3; border-color: var(--primary); }
+        .status-icon { position: absolute; top: 8px; right: 8px; font-size: 18px; display: none; }
+        .student-card.is-registered .status-icon { display: block; }
+
+        body.delete-active .student-card { border-color: #F8D7D7; }
+        body.delete-active .student-card:active { background-color: #FCE8E8; border-color: #D97E7A; }
+        body.delete-active .student-card.is-registered { background-color: #FFF0F0; border-color: var(--delete-mode-color); }
+
+        .action-bar { display: flex; gap: 12px; margin-bottom: 20px; }
         
-        students.push({ className: c, seat: s, name: n, isRegistered: isReg });
-      }
-    }
-    return ContentService.createTextOutput(JSON.stringify(students)).setMimeType(ContentService.MimeType.JSON);
-  }
-  
-  // 2. 新增或更新晚接紀錄
-  if (action === 'addLog') {
-    const sheet = ss.getSheetByName("晚接紀錄");
-    const className = String(e.parameter.className).trim();
-    const name = String(e.parameter.name).trim();
-    const incomingSeat = String(e.parameter.seat).trim().padStart(2, '0');
-    
-    const now = new Date();
-    const dateStr = Utilities.formatDate(now, "Asia/Taipei", "yyyy/MM/dd");
-    const timeStr = Utilities.formatDate(now, "Asia/Taipei", "HH:mm:ss");
-    
-    const data = sheet.getDataRange().getDisplayValues();
-    let isDuplicate = false;
-    let targetRow = -1;
-    
-    for (let i = 1; i < data.length; i++) {
-      let rowDate = String(data[i][0]).trim();
-      let rowClass = String(data[i][2]).trim();
-      let rowSeat = String(data[i][3]).trim().replace(/'/g, '').padStart(2, '0');
-      
-      if (rowDate === dateStr && rowClass === className && rowSeat === incomingSeat) {
-        isDuplicate = true;
-        targetRow = i + 1; 
-        break; 
-      }
-    }
-    
-    // 寫入時加上單引號，避免試算表自動將 02 轉成 2
-    const safeSeatToSave = "'" + incomingSeat;
+        .btn-common {
+            flex: 1; color: white; border: none; padding: 16px; border-radius: 16px;
+            font-size: 22px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s; -webkit-tap-highlight-color: transparent; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        
+        #backBtn { background-color: #B0BBAA; }
+        #backBtn:active { background-color: #8D998B; transform: scale(0.98); }
 
-    if (isDuplicate) {
-      sheet.getRange(targetRow, 2).setValue(timeStr);
-      sheet.getRange(targetRow, 4).setValue(safeSeatToSave);
-      return ContentService.createTextOutput(JSON.stringify({status: "success", name: name, message: "updated"})).setMimeType(ContentService.MimeType.JSON);
-    } else {
-      sheet.appendRow([dateStr, timeStr, className, safeSeatToSave, name]);
-      return ContentService.createTextOutput(JSON.stringify({status: "success", name: name, message: "added"})).setMimeType(ContentService.MimeType.JSON);
-    }
-  }
+        #toggleDeleteBtn { background-color: #E2EBD5; color: var(--primary); }
+        #toggleDeleteBtn.active { background-color: var(--delete-mode-color); color: white; }
 
-  // 3. 刪除今天的誤按紀錄
-  if (action === 'removeLog') {
-    const sheet = ss.getSheetByName("晚接紀錄");
-    const className = String(e.parameter.className).trim();
-    const incomingSeat = String(e.parameter.seat).trim().padStart(2, '0');
-    
-    const now = new Date();
-    const dateStr = Utilities.formatDate(now, "Asia/Taipei", "yyyy/MM/dd");
-    
-    const data = sheet.getDataRange().getDisplayValues();
-    
-    // 從最後一筆往前找，找到今天該名學生的紀錄並刪除
-    for (let i = data.length - 1; i >= 1; i--) {
-      let rowDate = String(data[i][0]).trim();
-      let rowClass = String(data[i][2]).trim();
-      let rowSeat = String(data[i][3]).trim().replace(/'/g, '').padStart(2, '0');
-      
-      if (rowDate === dateStr && rowClass === className && rowSeat === incomingSeat) {
-        sheet.deleteRow(i + 1);
-        return ContentService.createTextOutput(JSON.stringify({status: "success", message: "deleted"})).setMimeType(ContentService.MimeType.JSON);
-      }
-    }
-    return ContentService.createTextOutput(JSON.stringify({status: "not_found"})).setMimeType(ContentService.MimeType.JSON);
-  }
-}
+        .section-title { font-size: 24px; color: var(--text-muted); margin-bottom: 16px; font-weight: 700; text-align: center; }
 
-/**
- * 自動產生晚接統計表 (供試算表公式使用)
- */
-function GENERATE_REPORT(data) {
-  if (!data || data.length === 0) return [["無資料"]];
-  
-  let summary = {};
-  
-  for (let i = 0; i < data.length; i++) {
-    let date = data[i][0];
-    let className = data[i][2];
-    let seat = data[i][3];
-    let name = data[i][4];
+        /* 移除原本灰色的 logging 樣式，改用 processing 防連點 */
+        .processing { pointer-events: none; } 
+        
+        .success { background-color: var(--success) !important; color: white !important; border-color: transparent !important; box-shadow: 0 4px 12px rgba(115, 158, 130, 0.3) !important; }
+        .success b { color: white !important; }
+        .error { background-color: var(--error) !important; color: white !important; border-color: transparent !important; }
+        .error b { color: white !important; }
+
+        .footer-credit {
+            position: absolute; bottom: 20px; left: 0; width: 100%;
+            text-align: center; font-size: 16px; font-weight: 700; color: #A1AFA0; letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 id="mainTitle">🌱 晚接登記系統</h1>
     
-    // 跳過空白或標題列
-    if (!className || !name || className === "班級") continue; 
+    <div id="loading">讀取名單與今日狀態中...</div>
     
-    // 建立唯一鍵值：班級_座號_姓名
-    let key = className + "_" + String(seat).padStart(2, '0') + "_" + name;
+    <div class="action-bar" id="actionBar" style="display:none;">
+        <button id="backBtn" class="btn-common" onclick="resetView()">🍃 返回班級</button>
+        <button id="toggleDeleteBtn" class="btn-common" onclick="toggleDeleteMode()">🗑️ 取消誤按</button>
+    </div>
     
-    if (!summary[key]) {
-      summary[key] = {
-        className: className,
-        seat: String(seat).padStart(2, '0'),
-        name: name,
-        count: 0,
-        dates: []
-      };
+    <div id="viewTitle" class="section-title" style="display:none;">請選擇班級</div>
+
+    <div id="cardGrid" class="grid-layout"></div>
+
+    <div class="footer-credit">製作人：TATA</div>
+</div>
+
+<script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxxWN5IfwhRapNIMVjmNLTkiELGLFEHwydxEHrawYIhWwPLLeQ81kKMRI_0JrAKAIK3/exec';
+    
+    let allStudents = [];
+    let isDeleteMode = false; 
+
+    window.onload = function() {
+        fetch(`${API_URL}?action=getStudents`)
+            .then(response => response.json())
+            .then(data => {
+                allStudents = data;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('viewTitle').style.display = 'block';
+                renderClasses();
+            })
+            .catch(error => {
+                document.getElementById('loading').innerText = "❌ 載入失敗，請確認網路連線。";
+            });
     }
-    
-    summary[key].count += 1;
-    
-    // 格式化日期，只保留月份與日期 (MM/dd) 以節省報表空間
-    let dateStr = "";
-    if (date instanceof Date) {
-      dateStr = Utilities.formatDate(date, "Asia/Taipei", "MM/dd");
-    } else {
-      dateStr = String(date).split(" ")[0].substring(5); // 例如將 "2026/05/19" 切割為 "05/19"
+
+    function renderClasses() {
+        const grid = document.getElementById('cardGrid');
+        const viewTitle = document.getElementById('viewTitle');
+        const actionBar = document.getElementById('actionBar');
+        
+        isDeleteMode = false;
+        updateDeleteUI();
+        
+        grid.innerHTML = ''; 
+        viewTitle.innerText = '🎯 請選擇班級';
+        actionBar.style.display = 'none';
+
+        const classes = [...new Set(allStudents.map(s => s.className))].sort();
+        
+        classes.forEach(cls => {
+            let card = document.createElement('div');
+            card.className = 'card class-card';
+            card.innerText = cls;
+            card.onclick = () => renderStudents(cls);
+            grid.appendChild(card);
+        });
     }
-    
-    if (!summary[key].dates.includes(dateStr) && dateStr) {
-      summary[key].dates.push(dateStr);
+
+    function renderStudents(cls) {
+        const grid = document.getElementById('cardGrid');
+        const viewTitle = document.getElementById('viewTitle');
+        const actionBar = document.getElementById('actionBar');
+        
+        grid.innerHTML = '';
+        viewTitle.innerText = `👥 【${cls}】學生名單`;
+        actionBar.style.display = 'flex';
+
+        const classStudents = allStudents.filter(s => s.className === cls);
+        
+        classStudents.forEach(student => {
+            const seatStr = student.seat;
+            
+            let card = document.createElement('div');
+            card.className = 'card student-card';
+            
+            if (student.isRegistered) {
+                card.classList.add('is-registered');
+            }
+            
+            card.innerHTML = `<span class="status-icon">✅</span>${seatStr}號<br><b>${student.name}</b>`;
+            
+            card.onclick = () => handleStudentClick(student.className, seatStr, student.name, card);
+            grid.appendChild(card);
+        });
     }
-  }
-  
-  let result = [["班級", "座號", "姓名", "次數", "晚接日期記錄"]];
-  let sortedKeys = Object.keys(summary).sort();
-  
-  for (let i = 0; i < sortedKeys.length; i++) {
-    let k = sortedKeys[i];
-    let s = summary[k];
-    result.push([
-      s.className, 
-      "'" + s.seat, 
-      s.name, 
-      s.count, 
-      s.dates.join(", ") 
-    ]);
-  }
-  
-  return result;
-}
+
+    function resetView() {
+        renderClasses();
+    }
+
+    function toggleDeleteMode() {
+        isDeleteMode = !isDeleteMode;
+        updateDeleteUI();
+    }
+
+    function updateDeleteUI() {
+        const btn = document.getElementById('toggleDeleteBtn');
+        const title = document.getElementById('mainTitle');
+        const viewTitle = document.getElementById('viewTitle');
+        
+        if (isDeleteMode) {
+            document.body.classList.add('delete-active');
+            btn.classList.add('active');
+            btn.innerText = '❌ 退出取消模式';
+            title.innerText = '⚠️ 取消登記模式';
+            viewTitle.innerText = '請點選要「刪除」的已登記學生';
+        } else {
+            document.body.classList.remove('delete-active');
+            btn.classList.remove('active');
+            btn.innerText = '🗑️ 取消誤按';
+            title.innerText = '🌱 晚接登記系統';
+            const sampleCard = document.querySelector('.student-card');
+            if(sampleCard) {
+                viewTitle.innerText = '👥 點擊學生進行登記';
+            }
+        }
+    }
+
+    function handleStudentClick(className, seatStr, name, cardElement) {
+        // 防止重複連點
+        if (cardElement.classList.contains('processing')) return;
+        
+        const studentObj = allStudents.find(s => s.className === className && s.seat === seatStr);
+
+        if (isDeleteMode) {
+            if (!studentObj.isRegistered) {
+                alert(`今天沒有 ${name} 的晚接紀錄，無法刪除喔！`);
+                return;
+            }
+            if (confirm(`確定要刪除 ${name} 今天的晚接紀錄嗎？`)) {
+                executeLogAction(className, seatStr, name, cardElement, 'removeLog', studentObj);
+            }
+        } else {
+            executeLogAction(className, seatStr, name, cardElement, 'addLog', studentObj);
+        }
+    }
+
+    // ⚡ 關鍵優化：極速反應的登記邏輯
+    function executeLogAction(className, seatStr, name, cardElement, actionType, studentObj) {
+        // 鎖定卡片避免連點
+        cardElement.classList.add('processing');
+        
+        const isAdding = (actionType === 'addLog');
+        const originalHTML = `<span class="status-icon">✅</span>${seatStr}號<br><b>${name}</b>`;
+
+        // 🎯 第一步：不等伺服器，畫面「瞬間」變更狀態，給予立即的回饋！
+        if (isAdding) {
+            cardElement.className = 'card success processing';
+            cardElement.innerHTML = `✅ 已登記<br><b>${name}</b>`;
+        } else {
+            cardElement.className = 'card error processing';
+            cardElement.style.backgroundColor = '#D97E7A'; 
+            cardElement.innerHTML = `🗑️ 已刪除<br><b>${name}</b>`;
+        }
+
+        // 🎯 第二步：背景默默發送 API 給 Google
+        const url = `${API_URL}?action=${actionType}&className=${encodeURIComponent(className)}&seat=${encodeURIComponent(seatStr)}&name=${encodeURIComponent(name)}`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    // 背景更新成功，記錄最新的狀態
+                    studentObj.isRegistered = isAdding;
+                } else if (data.status === 'not_found') {
+                    studentObj.isRegistered = false; 
+                }
+                
+                // 1.2 秒後，將卡片恢復成正常的「已登記(淺綠)」或「未登記(淺黃)」狀態
+                setTimeout(() => {
+                    cardElement.className = studentObj.isRegistered ? 'card student-card is-registered' : 'card student-card';
+                    cardElement.innerHTML = originalHTML;
+                    cardElement.style.backgroundColor = ''; 
+                }, 1200);
+            })
+            .catch(error => {
+                // 萬一真的沒網路或失敗了，才跳出紅框警告
+                cardElement.className = 'card error';
+                cardElement.innerHTML = `❌ 網路失敗<br><b>請重試</b>`;
+                setTimeout(() => {
+                    // 回復成原本點擊前的狀態
+                    cardElement.className = studentObj.isRegistered ? 'card student-card is-registered' : 'card student-card';
+                    cardElement.innerHTML = originalHTML;
+                }, 2000);
+            });
+    }
+</script>
+
+</body>
+</html>
