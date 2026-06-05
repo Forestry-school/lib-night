@@ -137,7 +137,7 @@
 </div>
 
 <script>
-    // 您的專屬 API 網址 (請確認 Google Apps Script 有發佈為「新版本」)
+    // 您的專屬 API 網址 
     const API_URL = 'https://script.google.com/macros/s/AKfycbybW7boF9eppfYM9aB9KGBPKExSo7GjlSKWB1jHiRyp6H6fpGTHZtjRt6NCpioA1-S9/exec';
     
     let allStudents = [];
@@ -193,7 +193,6 @@
         const classStudents = allStudents.filter(s => s.className === cls);
         
         classStudents.forEach(student => {
-            // 座號直接使用後端傳來的格式
             const seatStr = student.seat;
             
             let card = document.createElement('div');
@@ -242,7 +241,6 @@
     }
 
     function handleStudentClick(className, seatStr, name, cardElement) {
-        // 防止重複連點
         if (cardElement.classList.contains('processing')) return;
         
         const studentObj = allStudents.find(s => s.className === className && s.seat === seatStr);
@@ -260,14 +258,12 @@
         }
     }
 
-    // 極速反應登記邏輯 (Optimistic UI)
     function executeLogAction(className, seatStr, name, cardElement, actionType, studentObj) {
         cardElement.classList.add('processing');
         
         const isAdding = (actionType === 'addLog');
         const originalHTML = `<span class="status-icon">✅</span>${seatStr}號<br><b>${name}</b>`;
 
-        // 瞬間改變視覺狀態，不須等待後端
         if (isAdding) {
             cardElement.className = 'card success processing';
             cardElement.innerHTML = `✅ 已登記<br><b>${name}</b>`;
@@ -277,20 +273,17 @@
             cardElement.innerHTML = `🗑️ 已刪除<br><b>${name}</b>`;
         }
 
-        // 背景非同步發送 API 請求
         const url = `${API_URL}?action=${actionType}&className=${encodeURIComponent(className)}&seat=${encodeURIComponent(seatStr)}&name=${encodeURIComponent(name)}`;
         
         fetch(url)
             .then(response => response.json())
             .then(data => {
                 if(data.status === 'success') {
-                    // 更新本地狀態
                     studentObj.isRegistered = isAdding;
                 } else if (data.status === 'not_found') {
                     studentObj.isRegistered = false; 
                 }
                 
-                // 1.2 秒後恢復正常外觀
                 setTimeout(() => {
                     cardElement.className = studentObj.isRegistered ? 'card student-card is-registered' : 'card student-card';
                     cardElement.innerHTML = originalHTML;
@@ -298,7 +291,6 @@
                 }, 1200);
             })
             .catch(error => {
-                // 若網路異常，跳出提示並復原狀態
                 cardElement.className = 'card error';
                 cardElement.innerHTML = `❌ 網路失敗<br><b>請重試</b>`;
                 setTimeout(() => {
@@ -311,4 +303,3 @@
 
 </body>
 </html>
-
